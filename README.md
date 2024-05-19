@@ -11,7 +11,7 @@ Flask-Tailwind-Manager provides a simple interface to use TailwindCSS with your 
 Install the extension with pip:
 
 ```bash
-pip install flask-tailwindcss
+pip install flask-tailwind-manager
 ```
 
 ## Configuration
