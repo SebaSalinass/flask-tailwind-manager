@@ -34,7 +34,7 @@ To begin we'll set up a Flask app:
 
 ```python
 from flask import Flask
-from flask_tailwindcss import TailwindCSS
+from flask_tailwind import TailwindCSS
 
 app = Flask(__name__)
 
