@@ -1,0 +1,18 @@
+module.exports = {
+    content: [
+        //HTML. Paths to Flask template files that may contain Tailwind CSS classes.
+        "../{{ app_name }}/**/{{ templates_folder }}/**/*.html",
+        "../{{ app_name }}/**/{{ templates_folder }}/**/*.jinja",
+        "../{{ app_name }}/**/{{ templates_folder }}/**/*.j2",
+
+        // Uncomment next line to allow .py usage of tailwind classes
+        // "../src/**/*.py",
+        ],
+    theme: {
+      extend: {},
+    },
+    plugins: [
+      
+    ],
+  }
+  
