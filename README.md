@@ -1,6 +1,6 @@
-# Flask-TailwindCSS
+# Flask-Tailwind-Manager
 
-Flask-TailwindCSS provides a simple interface to use TailwindCSS with your Flask project. It will let you hide it in a folder called .tailwind so you dont have to see any node_modules or any other javascript. Even tho you DO need npm and npx to be available on your machine.
+Flask-Tailwind-Manager provides a simple interface to use TailwindCSS with your Flask project. It will let you hide it in a folder called .tailwind so you dont have to see any node_modules or any other javascript. Even tho you DO need npm and npx to be available on your machine.
 
 ```{warning}
 🚧 This package is under heavy development..
