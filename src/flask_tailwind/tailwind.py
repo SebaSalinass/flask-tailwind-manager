@@ -85,6 +85,7 @@ class TailwindCSS:
             "tailwind.config.js.jinja",
             app_name=app_name,
             templates_folder=self.template_folder,
+            cwd=self.cwd
         )
 
     def __tailwind_css_tag(self) -> str:

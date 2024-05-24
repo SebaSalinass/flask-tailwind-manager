@@ -45,6 +45,8 @@ def init():
 
     with open(dest_dir / "tailwind.config.js", "w") as file:
         file.write(tailwind.tailwind_config_js_str())
+    
+    shutil.move(dest_dir / "tailwind.config.js", ".")
 
     logging.info(f"🍃 Installing dependencies in {tailwind.cwd}")
     console = tailwind.get_console_interface()
@@ -60,6 +62,8 @@ def start():
     console = tailwind.get_console_interface()
     console.npx_run(
         "tailwindcss",
+        "-c",
+        "../tailwind.config.js",
         "-i",
         "./src/input.css",
         "-o",
@@ -68,7 +72,7 @@ def start():
     )
 
 
-@tailwind.command()
+@tailwind.command(context_settings=dict(ignore_unknown_options=True, allow_interspersed_args=True))
 @click.argument("args", nargs=-1)
 @with_appcontext
 def npm(args: Tuple[str]) -> None:
@@ -78,7 +82,7 @@ def npm(args: Tuple[str]) -> None:
     console.npm_run(*args)
 
 
-@tailwind.command()
+@tailwind.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument("args", nargs=-1)
 @with_appcontext
 def npx(args: Tuple[str]) -> None:
