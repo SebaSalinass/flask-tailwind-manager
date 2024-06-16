@@ -12,7 +12,7 @@ namespaces = false
 
 [project]
 name = "flask-tailwind-manager"
-version = "0.0.5"
+version = "0.0.6"
 description = "Easily use tailwind css with Flask projects"
 readme = "README.md"
 authors = [{ name = "Sebastian Salinas", email = "seba.salinas.delrio@gmail.com" }]

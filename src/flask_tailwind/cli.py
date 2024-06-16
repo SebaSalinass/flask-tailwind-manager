@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Tuple
 import shutil
 import sys
 import logging
+import os
 
 import click
 from flask.cli import with_appcontext
@@ -20,14 +21,14 @@ def install_if_needed(tailwind: "TailwindCSS"):
 
 
 @click.group()
-def tailwind():
+def tailwind() -> None:
     """Perform TailwindCSS operations."""
     pass
 
 
 @tailwind.command()
 @with_appcontext
-def init():
+def init() -> None:
     tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
 
     source_dir = tailwind.node_config_starter_path()
@@ -46,7 +47,18 @@ def init():
     with open(dest_dir / "tailwind.config.js", "w") as file:
         file.write(tailwind.tailwind_config_js_str())
     
-    shutil.move(dest_dir / "tailwind.config.js", ".")
+    filename = "tailwind.config.js"
+    src_path = dest_dir / filename
+    dst_path = dest_dir / filename
+
+    if dst_path.exists():
+        logging.info("🍃 `tailwind.config.js` file found into CWD root. Default configuration generation aborted.") 
+        logging.warn(f"🍃 Remember plugins path must be defined as: './{ tailwind.cwd }/node_modules/PLUGIN_NAME' ") 
+        os.remove(src_path)
+        
+    else:
+        logging.info("🍃 Copying default `tailwind.config.js` into root path") 
+        shutil.move(src_path, dest_dir)
 
     logging.info(f"🍃 Installing dependencies in {tailwind.cwd}")
     console = tailwind.get_console_interface()
@@ -55,7 +67,7 @@ def init():
 
 @tailwind.command()
 @with_appcontext
-def start():
+def start() -> None:
     """Start watching CSS changes for dev."""
     tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
     install_if_needed(tailwind)
