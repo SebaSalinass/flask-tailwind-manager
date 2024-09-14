@@ -7,7 +7,7 @@ include-package-data = true
 
 [project]
 name = "flask-tailwind-manager"
-version = "0.0.9"
+version = "0.0.10"
 description = "Easily use tailwind css with Flask projects"
 readme = "README.md"
 authors = [{ name = "Sebastian Salinas", email = "seba.salinas.delrio@gmail.com" }]
