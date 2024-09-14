@@ -28,6 +28,7 @@ def tailwind() -> None:
 
 @tailwind.command()
 @with_appcontext
+@with_appcontext
 def init() -> None:
     tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
 
@@ -49,16 +50,16 @@ def init() -> None:
     
     filename = "tailwind.config.js"
     src_path = dest_dir / filename
-    dst_path = dest_dir / filename
+    config_root = dest_dir.parent / filename
 
-    if dst_path.exists():
+    if config_root.exists():
         logging.info("🍃 `tailwind.config.js` file found into CWD root. Default configuration generation aborted.") 
-        logging.warn(f"🍃 Remember plugins path must be defined as: './{ tailwind.cwd }/node_modules/PLUGIN_NAME' ") 
+        logging.warning(f"🍃 Remember plugins path must be defined as: './{ tailwind.cwd }/node_modules/PLUGIN_NAME' ") 
         os.remove(src_path)
         
     else:
         logging.info("🍃 Copying default `tailwind.config.js` into root path") 
-        shutil.move(src_path, dest_dir)
+        shutil.move(src_path, config_root)
 
     logging.info(f"🍃 Installing dependencies in {tailwind.cwd}")
     console = tailwind.get_console_interface()
