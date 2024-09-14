@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Optional
 import shutil
 import sys
 import logging
@@ -27,7 +27,6 @@ def tailwind() -> None:
 
 
 @tailwind.command()
-@with_appcontext
 @with_appcontext
 def init() -> None:
     tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
@@ -66,10 +65,12 @@ def init() -> None:
     console.npm_run("-D", "install", "tailwindcss")
 
 
-@tailwind.command()
+@tailwind.command(context_settings={"ignore_unknown_options": True})
+@click.argument("args", nargs=-1)
 @with_appcontext
-def start() -> None:
+def start(args: Optional[Tuple[str]] = None) -> None:
     """Start watching CSS changes for dev."""
+    extra_args = args or ()
     tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
     install_if_needed(tailwind)
     console = tailwind.get_console_interface()
@@ -82,6 +83,7 @@ def start() -> None:
         "-o",
         "../" + str(tailwind.get_output_path()),
         "--watch",
+        *extra_args
     )
 
 
