@@ -12,6 +12,7 @@ description = "Easily use tailwind css with Flask projects"
 readme = "README.md"
 authors = [{ name = "Sebastian Salinas", email = "seba.salinas.delrio@gmail.com" }]
 license = "MIT"
+license-files = ["LICEN[CS]E*"]
 keywords = ["flask", "tailwind", "tailwindcss"]
 dependencies = [
     "flask >= 3.0.0, < 4",
