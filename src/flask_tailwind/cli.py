@@ -1,12 +1,12 @@
-from typing import TYPE_CHECKING, Tuple, Optional
-import shutil
-import sys
 import logging
 import os
+import shutil
+import sys
+from typing import TYPE_CHECKING, Optional, Tuple
 
 import click
-from flask.cli import with_appcontext
 from flask import current_app
+from flask.cli import with_appcontext
 
 if TYPE_CHECKING:
     from .tailwind import TailwindCSS
@@ -46,23 +46,27 @@ def init() -> None:
 
     with open(dest_dir / "tailwind.config.js", "w") as file:
         file.write(tailwind.tailwind_config_js_str())
-    
+
     filename = "tailwind.config.js"
     src_path = dest_dir / filename
     config_root = dest_dir.parent / filename
 
     if config_root.exists():
-        logging.info("🍃 `tailwind.config.js` file found into CWD root. Default configuration generation aborted.") 
-        logging.warning(f"🍃 Remember plugins path must be defined as: './{ tailwind.cwd }/node_modules/PLUGIN_NAME' ") 
+        logging.info(
+            "🍃 `tailwind.config.js` file found into CWD root. Default configuration generation aborted."
+        )
+        logging.warning(
+            f"🍃 Remember plugins path must be defined as: './{ tailwind.cwd }/node_modules/PLUGIN_NAME' "
+        )
         os.remove(src_path)
-        
+
     else:
-        logging.info("🍃 Copying default `tailwind.config.js` into root path") 
+        logging.info("🍃 Copying default `tailwind.config.js` into root path")
         shutil.move(src_path, config_root)
 
     logging.info(f"🍃 Installing dependencies in {tailwind.cwd}")
     console = tailwind.get_console_interface()
-    console.npm_run("-D", "install", "tailwindcss")
+    console.npm_run("install", "tailwindcss", "@tailwindcss/cli")
 
 
 @tailwind.command(context_settings={"ignore_unknown_options": True})
@@ -75,7 +79,7 @@ def start(args: Optional[Tuple[str]] = None) -> None:
     install_if_needed(tailwind)
     console = tailwind.get_console_interface()
     console.npx_run(
-        "tailwindcss",
+        "@tailwindcss/cli",
         "-c",
         "../tailwind.config.js",
         "-i",
@@ -83,11 +87,13 @@ def start(args: Optional[Tuple[str]] = None) -> None:
         "-o",
         "../" + str(tailwind.get_output_path()),
         "--watch",
-        *extra_args
+        *extra_args,
     )
 
 
-@tailwind.command(context_settings=dict(ignore_unknown_options=True, allow_interspersed_args=True))
+@tailwind.command(
+    context_settings=dict(ignore_unknown_options=True, allow_interspersed_args=True)
+)
 @click.argument("args", nargs=-1)
 @with_appcontext
 def npm(args: Tuple[str]) -> None:
