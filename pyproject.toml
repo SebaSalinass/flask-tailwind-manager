@@ -7,11 +7,11 @@ include-package-data = true
 
 [project]
 name = "flask-tailwind-manager"
-version = "0.0.12"
+version = "0.0.13"
 description = "Easily use tailwind css with Flask projects"
 readme = "README.md"
 authors = [{ name = "Sebastian Salinas", email = "seba.salinas.delrio@gmail.com" }]
-license = { file = "LICENSE" }
+license = "MIT"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
@@ -25,3 +25,4 @@ requires-python = ">=3.11"
 
 [project.urls]
 Homepage = "https://github.com/sebasalinass/flask-tailwindcss"
+
