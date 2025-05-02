@@ -1,5 +1,4 @@
 import logging
-import os
 import shutil
 import sys
 from typing import TYPE_CHECKING, Optional, Tuple
@@ -10,14 +9,6 @@ from flask.cli import with_appcontext
 
 if TYPE_CHECKING:
     from .tailwind import TailwindCSS
-
-
-def install_if_needed(tailwind: "TailwindCSS"):
-    if not tailwind.node_destination_path().exists():
-        logging.info(
-            f"No {tailwind.node_destination_path()} directory found. Running 'npm install'."
-        )
-        init()
 
 
 @click.group()
@@ -44,48 +35,40 @@ def init() -> None:
     with open(dest_dir / "package.json", "w") as file:
         file.write(tailwind.package_json_str())
 
-    with open(dest_dir / "tailwind.config.js", "w") as file:
-        file.write(tailwind.tailwind_config_js_str())
-
-    filename = "tailwind.config.js"
-    src_path = dest_dir / filename
-    config_root = dest_dir.parent / filename
-
-    if config_root.exists():
-        logging.info(
-            "🍃 `tailwind.config.js` file found into CWD root. Default configuration generation aborted."
-        )
-        logging.warning(
-            f"🍃 Remember plugins path must be defined as: './{ tailwind.cwd }/node_modules/PLUGIN_NAME' "
-        )
-        os.remove(src_path)
-
-    else:
-        logging.info("🍃 Copying default `tailwind.config.js` into root path")
-        shutil.move(src_path, config_root)
+    with open(dest_dir / "src/input.css", "w") as file:
+        file.write(tailwind.input_css_str())
 
     logging.info(f"🍃 Installing dependencies in {tailwind.cwd}")
     console = tailwind.get_console_interface()
     console.npm_run("install", "tailwindcss", "@tailwindcss/cli")
 
 
+def install_if_needed(ctx: click.Context, tailwind_ext: TailwindCSS) -> None:
+    if not tailwind_ext.node_destination_path().exists():
+        logging.info(
+            f"No {tailwind_ext.node_destination_path()} directory found. Running 'npm install'."
+        )
+        ctx.invoke(init)
+    return None
+
+
 @tailwind.command(context_settings={"ignore_unknown_options": True})
 @click.argument("args", nargs=-1)
+@click.pass_context
 @with_appcontext
-def start(args: Optional[Tuple[str]] = None) -> None:
+def start(ctx: click.Context, args: Optional[Tuple[str]] = None) -> None:
     """Start watching CSS changes for dev."""
+    tailwind_ext: "TailwindCSS" = current_app.extensions["tailwind"]
+    install_if_needed(ctx, tailwind_ext)
+
     extra_args = args or ()
-    tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
-    install_if_needed(tailwind)
-    console = tailwind.get_console_interface()
+    console = tailwind_ext.get_console_interface()
     console.npx_run(
         "@tailwindcss/cli",
-        "-c",
-        "../tailwind.config.js",
         "-i",
         "./src/input.css",
         "-o",
-        "../" + str(tailwind.get_output_path()),
+        "../" + str(tailwind_ext.get_output_path()),
         "--watch",
         *extra_args,
     )
@@ -95,19 +78,23 @@ def start(args: Optional[Tuple[str]] = None) -> None:
     context_settings=dict(ignore_unknown_options=True, allow_interspersed_args=True)
 )
 @click.argument("args", nargs=-1)
+@click.pass_context
 @with_appcontext
-def npm(args: Tuple[str]) -> None:
-    tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
-    install_if_needed(tailwind)
-    console = tailwind.get_console_interface()
+def npm(ctx: click.Context, args: Tuple[str]) -> None:
+    tailwind_ext: "TailwindCSS" = current_app.extensions["tailwind"]
+    install_if_needed(ctx, tailwind_ext)
+
+    console = tailwind_ext.get_console_interface()
     console.npm_run(*args)
 
 
 @tailwind.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument("args", nargs=-1)
+@click.pass_context
 @with_appcontext
-def npx(args: Tuple[str]) -> None:
-    tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
-    install_if_needed(tailwind)
-    console = tailwind.get_console_interface()
+def npx(ctx: click.Context, args: Tuple[str]) -> None:
+    tailwind_ext: "TailwindCSS" = current_app.extensions["tailwind"]
+    install_if_needed(ctx, tailwind_ext)
+
+    console = tailwind_ext.get_console_interface()
     console.npx_run(*args)

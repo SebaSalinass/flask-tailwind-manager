@@ -1,8 +1,10 @@
-from typing import Optional
 from pathlib import Path
-from flask import Flask, Blueprint, render_template
-from .console import ConsoleInterface, DEFAULT_NPM_BIN_PATH, DEFAULT_NPX_BIN_PATH
+from typing import Optional
+
+from flask import Blueprint, Flask, render_template
+
 from .cli import tailwind
+from .console import DEFAULT_NPM_BIN_PATH, DEFAULT_NPX_BIN_PATH, ConsoleInterface
 
 DEFAULT_CWD = ".tailwind"
 DEFAULT_OUTPUT_PATH = "css/style.css"
@@ -73,19 +75,16 @@ class TailwindCSS:
         return output_path
 
     def package_json_str(self) -> str:
-        app_name = self.app_name or "tailwind-app"
+        app_name = self.app_name or "app-name"
         output_path = self.get_output_path()
         return render_template(
             "package.json.jinja", app_name=app_name, output_path=output_path
         )
 
-    def tailwind_config_js_str(self) -> str:
-        app_name = self.app_name or "tailwind-app"
+    def input_css_str(self) -> str:
+        app_name = self.app_name or "app"
         return render_template(
-            "tailwind.config.js.jinja",
-            app_name=app_name,
-            templates_folder=self.template_folder,
-            cwd=self.cwd
+            "input.css.jinja", app_name=app_name, template_folder=self.template_folder
         )
 
     def __tailwind_css_tag(self) -> str:
