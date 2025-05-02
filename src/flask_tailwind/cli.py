@@ -43,7 +43,7 @@ def init() -> None:
     console.npm_run("install", "tailwindcss", "@tailwindcss/cli")
 
 
-def install_if_needed(ctx: click.Context, tailwind_ext: TailwindCSS) -> None:
+def install_if_needed(ctx: click.Context, tailwind_ext: "TailwindCSS") -> None:
     if not tailwind_ext.node_destination_path().exists():
         logging.info(
             f"No {tailwind_ext.node_destination_path()} directory found. Running 'npm install'."
