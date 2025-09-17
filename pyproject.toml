@@ -1,26 +1,34 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-include-package-data = true
 
 [project]
 name = "flask-tailwind-manager"
-version = "0.0.16"
+version = "0.0.19"
 description = "Easily use tailwind css with Flask projects"
 readme = "README.md"
 authors = [{ name = "Sebastian Salinas", email = "seba.salinas.delrio@gmail.com" }]
-license = "MIT"
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
 keywords = ["flask", "tailwind", "tailwindcss"]
 dependencies = [
-    "flask >= 3.0.0, < 4",
+    "flask >= 2, < 4",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://github.com/sebasalinass/flask-tailwindcss"
+
+[dependency-groups]
+dev = [
+    "tox>=4.30.2",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.pytest.ini_options]
+pythonpath = "src"
