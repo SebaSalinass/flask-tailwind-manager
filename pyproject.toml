@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flask-tailwind-manager"
-version = "0.0.19"
+version = "0.0.20"
 description = "Easily use tailwind css with Flask projects"
 readme = "README.md"
 authors = [{ name = "Sebastian Salinas", email = "seba.salinas.delrio@gmail.com" }]
@@ -20,15 +20,19 @@ dependencies = [
 requires-python = ">=3.9"
 
 [project.urls]
-Homepage = "https://github.com/sebasalinass/flask-tailwindcss"
+Homepage = "https://github.com/sebasalinass/flask-leaflet"
 
 [dependency-groups]
 dev = [
+    "pytest>=8.4.2",
     "tox>=4.30.2",
 ]
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.package-data]
+flask_tailwind = ["templates/*","starter/*"]
 
 [tool.pytest.ini_options]
 pythonpath = "src"
