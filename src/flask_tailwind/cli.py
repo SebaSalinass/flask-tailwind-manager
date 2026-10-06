@@ -1,100 +1,67 @@
-import logging
-import shutil
-import sys
-from typing import TYPE_CHECKING, Optional, Tuple
+"""Tailwind commands; generic Node operations belong to Flask-Node."""
+
+from functools import wraps
 
 import click
 from flask import current_app
 from flask.cli import with_appcontext
+from flask_node import NodeError
 
-if TYPE_CHECKING:
-    from .tailwind import TailwindCSS
+
+def operation(function):
+    @wraps(function)
+    @with_appcontext
+    def wrapped(*args, **kwargs):
+        try:
+            return function(current_app.extensions["tailwind"], *args, **kwargs)
+        except (NodeError, OSError) as exc:
+            raise click.ClickException(f"Tailwind: {exc}") from exc
+
+    return wrapped
 
 
 @click.group()
-def tailwind() -> None:
-    """Perform TailwindCSS operations."""
-    pass
+def tailwind():
+    """Configure, build, and watch Tailwind CSS."""
 
 
 @tailwind.command()
-@with_appcontext
-def init() -> None:
-    tailwind: "TailwindCSS" = current_app.extensions["tailwind"]
-
-    source_dir = tailwind.node_config_starter_path()
-    dest_dir = tailwind.node_destination_path()
-
-    if dest_dir.exists():
-        logging.info("🍃 Destination path already exists. Aborting")
-        sys.exit(1)
-
-    shutil.copytree(source_dir, dest_dir)
-    logging.info(f"🍃 Copying default configuration files into {dest_dir}")
-
-    with open(dest_dir / "package.json", "w") as file:
-        file.write(tailwind.package_json_str())
-
-    with open(dest_dir / "src/input.css", "w") as file:
-        file.write(tailwind.input_css_str())
-
-    logging.info(f"🍃 Installing dependencies in {tailwind.cwd}")
-    console = tailwind.get_console_interface()
-    console.npm_run("install", "tailwindcss", "@tailwindcss/cli")
-
-
-def install_if_needed(ctx: click.Context, tailwind_ext: "TailwindCSS") -> None:
-    if not tailwind_ext.node_destination_path().exists():
-        logging.info(
-            f"No {tailwind_ext.node_destination_path()} directory found. Running 'npm install'."
-        )
-        ctx.invoke(init)
-    return None
+@operation
+def init(extension):
+    """Install Tailwind requirements and create missing input CSS."""
+    extension.initialize()
+    click.echo(f"Tailwind ready: {extension.get_input_path()}")
 
 
 @tailwind.command(context_settings={"ignore_unknown_options": True})
-@click.argument("args", nargs=-1)
-@click.pass_context
-@with_appcontext
-def start(ctx: click.Context, args: Optional[Tuple[str]] = None) -> None:
-    """Start watching CSS changes for dev."""
-    tailwind_ext: "TailwindCSS" = current_app.extensions["tailwind"]
-    install_if_needed(ctx, tailwind_ext)
-
-    extra_args = args or ()
-    console = tailwind_ext.get_console_interface()
-    console.npx_run(
-        "@tailwindcss/cli",
-        "-i",
-        "./src/input.css",
-        "-o",
-        "../" + str(tailwind_ext.get_output_path()),
-        "--watch",
-        *extra_args,
-    )
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+@operation
+def start(extension, args):
+    """Watch CSS changes for development."""
+    extension.run(*args, watch=True)
 
 
-@tailwind.command(
-    context_settings=dict(ignore_unknown_options=True, allow_interspersed_args=True)
-)
-@click.argument("args", nargs=-1)
-@click.pass_context
-@with_appcontext
-def npm(ctx: click.Context, args: Tuple[str]) -> None:
-    tailwind_ext: "TailwindCSS" = current_app.extensions["tailwind"]
-    install_if_needed(ctx, tailwind_ext)
-
-    console = tailwind_ext.get_console_interface()
-    console.npm_run(*args)
+@tailwind.command(context_settings={"ignore_unknown_options": True})
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+@operation
+def build(extension, args):
+    """Build minified CSS for production."""
+    extension.run(*args)
 
 
-@tailwind.command(context_settings=dict(ignore_unknown_options=True))
-@click.argument("args", nargs=-1)
-@click.pass_context
-@with_appcontext
-def npx(ctx: click.Context, args: Tuple[str]) -> None:
-    tailwind_ext: "TailwindCSS" = current_app.extensions["tailwind"]
-    install_if_needed(ctx, tailwind_ext)
+@tailwind.command(context_settings={"ignore_unknown_options": True})
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+@operation
+def npm(extension, args):
+    """Deprecated alias for flask node npm."""
+    click.echo("Deprecated: use 'flask node npm -- ...'.", err=True)
+    extension.node.npm(*args, capture_output=False)
 
-    console = tailwind_ext.get_console_interface()
-    console.npx_run(*args)
+
+@tailwind.command(context_settings={"ignore_unknown_options": True})
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+@operation
+def npx(extension, args):
+    """Deprecated alias for flask node npx."""
+    click.echo("Deprecated: use 'flask node npx -- ...'.", err=True)
+    extension.node.npx(*args, capture_output=False)
