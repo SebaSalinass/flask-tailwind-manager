@@ -1,7 +1,5 @@
 """Tailwind integration backed by the application's shared Flask-Node manager."""
 
-import json
-import os
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,10 +9,12 @@ from flask import Blueprint, Flask, current_app, render_template
 from flask_node import ConfigurationError, Node, NodeManager, PackageNotFoundError
 
 from .cli import tailwind
+from .integrations import REGISTRY, Integration, select_integrations
+from .paths import css_string, package_path, relative_css_path
 
 DEFAULT_OUTPUT_PATH = "css/style.css"
 DEFAULT_TEMPLATE_FOLDER = "templates"
-DEFAULT_INPUT_PATH = "tailwind/input.css"
+DEFAULT_INPUT_PATH = "src/input.css"
 TAILWIND_PACKAGES = ("tailwindcss", "@tailwindcss/cli")
 
 
@@ -24,7 +24,8 @@ class TailwindState:
     input_path: Path
     output_css_path: str
     static_folder: Path
-    template_path: Path
+    template_path: Path | None
+    integrations: tuple[Integration, ...]
 
 
 class TailwindCSS:
@@ -42,14 +43,20 @@ class TailwindCSS:
             raise AttributeError("Given app static_folder must be set.")
         output = app.config.get("TAILWIND_OUTPUT_PATH", DEFAULT_OUTPUT_PATH)
         input_value = app.config.get("TAILWIND_INPUT_PATH", DEFAULT_INPUT_PATH)
-        templates = app.config.get("TAILWIND_TEMPLATE_FOLDER", DEFAULT_TEMPLATE_FOLDER)
+        templates = app.config.get("TAILWIND_TEMPLATE_FOLDER", app.template_folder)
+        enabled = select_integrations(app.config.get("TAILWIND_INTEGRATIONS", []))
         for key, value in (
             ("TAILWIND_OUTPUT_PATH", output),
             ("TAILWIND_INPUT_PATH", input_value),
-            ("TAILWIND_TEMPLATE_FOLDER", templates),
         ):
             if not isinstance(value, (str, Path)) or not str(value).strip():
                 raise ConfigurationError(f"{key} must be a nonempty path.")
+        if templates is not None and (
+            not isinstance(templates, (str, Path)) or not str(templates).strip()
+        ):
+            raise ConfigurationError(
+                "TAILWIND_TEMPLATE_FOLDER must be a nonempty path or None."
+            )
         output_path = Path(output)
         if output_path.is_absolute() or ".." in output_path.parts:
             raise ConfigurationError(
@@ -61,15 +68,23 @@ class TailwindCSS:
         node = Node().get_manager(app)
         for package in TAILWIND_PACKAGES:
             node.require(package, "^4")
+        for integration in enabled:
+            for requirement in integration.packages:
+                node.require(requirement.name, requirement.version, dev=requirement.dev)
+            for asset in integration.assets:
+                node.register_asset(asset.package, asset.source, asset.destination)
         input_path = Path(input_value)
         if not input_path.is_absolute():
-            input_path = node.directory / input_path
+            input_path = Path(app.static_folder) / input_path
         self._states[app] = TailwindState(
             node,
             input_path.resolve(),
             str(output),
             Path(app.static_folder),
-            (Path(app.root_path) / templates).resolve(),
+            (Path(app.root_path) / templates).resolve()
+            if templates is not None
+            else None,
+            enabled,
         )
         app.extensions["tailwind"] = self
         app.register_blueprint(
@@ -150,27 +165,96 @@ class TailwindCSS:
         state = self._state()
         return state.static_folder / state.output_css_path
 
+    @property
+    def input_path(self) -> Path:
+        return self.get_input_path()
+
+    @property
+    def integrations(self) -> tuple[Integration, ...]:
+        return self._state().integrations
+
+    def node_path(self, package: str, path: str) -> str:
+        return package_path(self.node, package, path, self.input_path.parent)
+
+    def source(self, package: str, path: str) -> str:
+        return f"@source {css_string(self.node_path(package, path))};"
+
+    def import_package(self, package: str, path: str) -> str:
+        return f"@import {css_string(self.node_path(package, path))};"
+
+    def plugin(self, package: str, subpath: str | None = None) -> str:
+        target = self.node.resolve_entry(package, subpath)
+        return (
+            f"@plugin {css_string(relative_css_path(target, self.input_path.parent))};"
+        )
+
+    def integration_config(self, name: str) -> str:
+        if name not in REGISTRY:
+            raise ConfigurationError(
+                f"Unknown integration {name!r}. Available: {', '.join(sorted(REGISTRY))}."
+            )
+        integration = REGISTRY[name]
+        status = (
+            "enabled" if integration in self.integrations else "available, not enabled"
+        )
+        lines = [
+            f"{name} integration ({status})",
+            f"Tailwind input: {self.input_path}",
+            "",
+            "Required npm packages:",
+        ]
+        lines.extend(f"  {r.name}@{r.version}" for r in integration.packages)
+        lines.extend(["", "Required Tailwind configuration:"])
+        # CSS imports precede other directives so their ordering remains valid.
+        lines.extend(
+            self.import_package(p.package, p.path) for p in integration.imports
+        )
+        lines.extend(self.source(p.package, p.path) for p in integration.sources)
+        lines.extend(self.plugin(p.package, p.subpath) for p in integration.plugins)
+        lines.extend(["", "Browser assets:"])
+        registered = self.node.assets
+        lines.extend(
+            f"  {a.destination} ({'registered' if any(x.package == a.package and x.source == a.source and x.destination == a.destination for x in registered) else 'not registered'})"
+            for a in integration.assets
+        )
+        if not integration.assets:
+            lines.append("  None")
+        return "\n".join(lines)
+
+    def paths(self) -> dict[str, str | None]:
+        state = self._state()
+        return {
+            "Tailwind input": str(self.input_path),
+            "Tailwind output": str(self.get_absolute_output_path()),
+            "Flask templates": str(state.template_path)
+            if state.template_path
+            else None,
+            "Flask static": str(state.static_folder),
+            "Node environment": str(self.node.directory),
+        }
+
     def input_css_str(self) -> str:
         state = self._state()
-        source = os.path.relpath(state.template_path, state.input_path.parent).replace(
-            os.sep, "/"
+        source = (
+            css_string(
+                relative_css_path(state.template_path, self.input_path.parent) + "/"
+            )
+            if state.template_path
+            else None
         )
-        # Explicitly resolve the import to the shared environment, including external input files.
-        stylesheet = self.node.resolve("tailwindcss", "index.css")
-        css_import = os.path.relpath(stylesheet, state.input_path.parent).replace(
-            os.sep, "/"
-        )
-        if not css_import.startswith("."):
-            css_import = "./" + css_import
         return render_template(
             "input.css.jinja",
-            css_import=json.dumps(css_import),
-            source=json.dumps(source + "/"),
+            css_import=css_string(self.node_path("tailwindcss", "index.css")),
+            source=source,
         )
 
     def initialize(self) -> None:
-        self.node.install(capture_output=False)
-        path = self.get_input_path()
+        try:
+            for package in TAILWIND_PACKAGES:
+                self.node.package(package)
+        except PackageNotFoundError:
+            self.node.install(capture_output=False)
+        path = self.input_path
         if not path.exists():
             contents = self.input_css_str()
             path.parent.mkdir(parents=True, exist_ok=True)

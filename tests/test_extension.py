@@ -1,9 +1,11 @@
 import json
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from flask_node import CommandResult, CommandRunner, ConfigurationError, Node, NodeError
+
 from flask_tailwind import TailwindCSS
 
 
@@ -80,8 +82,10 @@ def test_init_merges_shared_requirements_and_preserves_css(app):
         "preline": "^3",
     }
     assert manifest["scripts"] == {"custom": "echo hi"}
-    path = manager.directory / "tailwind/input.css"
-    assert '@import "../node_modules/tailwindcss/index.css"' in path.read_text()
+    path = Path(app.static_folder) / "src/input.css"
+    assert (
+        '@import "../../.node/node_modules/tailwindcss/index.css"' in path.read_text()
+    )
     assert 'source("../../templates/")' in path.read_text()
     path.write_text("/* custom */")
     assert cli.invoke(args=["tailwind", "init"]).exit_code == 0
@@ -101,7 +105,7 @@ def test_execution_and_first_use(app, runner, command, flag):
         (
             "@tailwindcss/cli",
             "-i",
-            str(manager.directory / "tailwind/input.css"),
+            str(Path(app.static_folder) / "src/input.css"),
             "-o",
             str(app.static_folder + "/css/style.css"),
             flag,
@@ -264,5 +268,5 @@ def test_generated_css_quotes_special_paths(tmp_path, runner):
     TailwindCSS(app)
     result = app.test_cli_runner().invoke(args=["tailwind", "init"])
     assert result.exit_code == 0, result.output
-    css = (app.extensions["node"].directory / "tailwind/input.css").read_text()
+    css = (Path(app.static_folder) / "src/input.css").read_text()
     assert r"views \"quoted\"" in css

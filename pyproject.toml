@@ -16,9 +16,14 @@ classifiers = [
 keywords = ["flask", "tailwind", "tailwindcss"]
 dependencies = [
     "flask >= 2.2, < 4",
-    "Flask-Node>=0.1.0,<0.2",
+    "Flask-Node>=0.2.0,<0.3",
 ]
 requires-python = ">=3.10"
+
+[project.optional-dependencies]
+preline = []
+flowbite = []
+daisyui = []
 
 [project.urls]
 Homepage = "https://github.com/sebasalinass/flask-tailwind-manager"
