@@ -1,6 +1,0 @@
-ruff
-pip-tools
-pytest
-mypy
-build
-twine
