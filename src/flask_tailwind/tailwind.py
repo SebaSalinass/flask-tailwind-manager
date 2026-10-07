@@ -7,6 +7,7 @@ from weakref import WeakKeyDictionary
 
 from flask import Blueprint, Flask, current_app, render_template
 from flask_node import ConfigurationError, Node, NodeManager, PackageNotFoundError
+from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from .cli import tailwind
 from .integrations import REGISTRY, Integration, select_integrations
@@ -16,6 +17,13 @@ DEFAULT_OUTPUT_PATH = "css/style.css"
 DEFAULT_TEMPLATE_FOLDER = "templates"
 DEFAULT_INPUT_PATH = "src/input.css"
 TAILWIND_PACKAGES = ("tailwindcss", "@tailwindcss/cli")
+
+# Source generation must not inherit application templates or request context.
+_internal_templates = Environment(
+    loader=PackageLoader("flask_tailwind", "templates"),
+    autoescape=False,
+    undefined=StrictUndefined,
+)
 
 
 @dataclass(frozen=True)
@@ -242,8 +250,7 @@ class TailwindCSS:
             if state.template_path
             else None
         )
-        return render_template(
-            "input.css.jinja",
+        return _internal_templates.get_template("input.css.jinja").render(
             css_import=css_string(self.node_path("tailwindcss", "index.css")),
             source=source,
         )

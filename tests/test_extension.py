@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, has_request_context, session
 from flask_node import CommandResult, CommandRunner, ConfigurationError, Node, NodeError
 
 from flask_tailwind import TailwindCSS
@@ -91,6 +91,69 @@ def test_init_merges_shared_requirements_and_preserves_css(app):
     assert cli.invoke(args=["tailwind", "init"]).exit_code == 0
     assert path.read_text() == "/* custom */"
     assert not (manager.directory.parent / ".tailwind").exists()
+
+
+def test_initialize_does_not_run_application_context_processors(app):
+    context_processor = Mock(
+        side_effect=RuntimeError("Application context processor should not run")
+    )
+    app.context_processor(context_processor)
+
+    with app.app_context():
+        assert not has_request_context()
+        extension = app.extensions["tailwind"]
+        extension.initialize()
+        assert extension.input_path.read_text() == extension.input_css_str()
+
+    context_processor.assert_not_called()
+
+
+@pytest.mark.parametrize("use_cli", [False, True])
+def test_initialize_with_request_dependent_context_processor(app, use_cli):
+    @app.context_processor
+    def request_dependent_context():
+        return {"something": session.get("something")}
+
+    assert not has_request_context()
+    if use_cli:
+        result = app.test_cli_runner().invoke(args=["tailwind", "init"])
+        assert result.exit_code == 0, (result.output, result.exception)
+        assert "Tailwind ready:" in result.output
+    else:
+        with app.app_context():
+            assert not has_request_context()
+            app.extensions["tailwind"].initialize()
+
+    assert (Path(app.static_folder) / "src/input.css").is_file()
+
+
+@pytest.mark.parametrize("template_folder", ["templates", None])
+def test_internal_css_template_cannot_be_shadowed(tmp_path, runner, template_folder):
+    app = Flask(__name__, root_path=str(tmp_path))
+    app.config["TAILWIND_TEMPLATE_FOLDER"] = template_folder
+    Node(app, runner=runner)
+    TailwindCSS(app)
+    templates = Path(app.root_path) / "templates"
+    templates.mkdir()
+    (templates / "input.css.jinja").write_text("/* application override */")
+    app.jinja_env.globals["css_import"] = "application global"
+    app.jinja_env.finalize = lambda value: "application finalize"
+
+    with app.app_context():
+        extension = app.extensions["tailwind"]
+        extension.initialize()
+        expected = (
+            "/*\n"
+            " * Tailwind source stylesheet. This file belongs to your application.\n"
+            " * Modify it freely and commit it to version control.\n"
+            " * Flask-Tailwind-Manager will not overwrite it.\n"
+            " */\n"
+            '@import "../../.node/node_modules/tailwindcss/index.css"'
+            + (' source("../../templates/")' if template_folder else "")
+            + ";"
+        )
+        assert extension.input_css_str() == expected
+        assert extension.input_path.read_text() == expected
 
 
 @pytest.mark.parametrize("command,flag", [("build", "--minify"), ("start", "--watch")])

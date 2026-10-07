@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flask-tailwind-manager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Easily use tailwind css with Flask projects"
 readme = "README.md"
 authors = [{ name = "Sebastian Salinas", email = "seba.salinas.delrio@gmail.com" }]
@@ -16,6 +16,7 @@ classifiers = [
 keywords = ["flask", "tailwind", "tailwindcss"]
 dependencies = [
     "flask >= 2.2, < 4",
+    "Jinja2>=3.0",
     "Flask-Node>=0.2.0,<0.3",
 ]
 requires-python = ">=3.10"
